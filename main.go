@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync/atomic"
 
+	"github.com/JacobRiske/chirpy/apipayload"
 	"github.com/pkg/errors"
 )
 
@@ -64,6 +65,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.hitcountString)
 	mux.HandleFunc("GET /api/healthz", headrerReadiness)
 	mux.Handle("POST /admin/reset", apiCfg.resetConfg(http.HandlerFunc(headrerReadiness)))
+	mux.HandleFunc("POST /api/validate_chirp", apipayload.ChirpValidate)
 
 	srv := &http.Server{
 		Addr:    _defaultAddr,
