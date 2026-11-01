@@ -21,7 +21,7 @@ func main() {
 		err       error
 	)
 
-	if apiCfg.db, apiCfg.env, err = makeDB(); err != nil {
+	if apiCfg.db, apiCfg.env, apiCfg.sT, err = makeDB(); err != nil {
 		log.Printf("failed to start the DB: %v", err)
 	}
 
@@ -31,7 +31,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", headrerReadiness)
 	mux.HandleFunc("POST /admin/reset", apiCfg.resetConfg)
 	mux.HandleFunc(postApi(_chirps), func(w http.ResponseWriter, r *http.Request) {
-		apipayload.CreateChirp(w, r, apiCfg.db)
+		apipayload.CreateChirp(w, r, apiCfg.db, apiCfg.sT)
 	})
 	mux.HandleFunc(postApi("users"), func(w http.ResponseWriter, r *http.Request) {
 		apipayload.AddUser(w, r, apiCfg.db)
@@ -41,6 +41,15 @@ func main() {
 	})
 	mux.HandleFunc(getApi(fmt.Sprintf(_getonething, _chirps, "{chirpID}")), func(w http.ResponseWriter, r *http.Request) {
 		apipayload.GetUserRequestedChirp(w, r, apiCfg.db)
+	})
+	mux.HandleFunc(postApi("login"), func(w http.ResponseWriter, r *http.Request) {
+		apipayload.Login(w, r, apiCfg.db, apiCfg.sT)
+	})
+	mux.HandleFunc(postApi("refresh"), func(w http.ResponseWriter, r *http.Request) {
+		apipayload.RefreshToken(w, r, apiCfg.db, apiCfg.sT)
+	})
+	mux.HandleFunc(postApi("revoke"), func(w http.ResponseWriter, r *http.Request) {
+		apipayload.RevokeToken(w, r, apiCfg.db)
 	})
 
 	srv := &http.Server{

@@ -7,42 +7,53 @@ package database
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
-Insert into users (id, created_at, updated_at, email)
+Insert into users (id, created_at, updated_at, email, pass)
 Values(
     gen_random_uuid(),
     NOW(),
     NOW(),
-    $1
+    $1,
+    $2
 )
-Returning id, created_at, updated_at, email
+Returning id, created_at, updated_at, email, pass
 `
 
-func (q *Queries) CreateUser(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, email)
+type CreateUserParams struct {
+	Email string
+	Pass  string
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, createUser, arg.Email, arg.Pass)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
+		&i.Pass,
 	)
 	return i, err
 }
 
-const lookUpUser = `-- name: LookUpUser :one
-Select id From users Where email = $1
+const lookUpUserPass = `-- name: LookUpUserPass :one
+Select id, created_at, updated_at, email, pass From users Where email = $1
 `
 
-func (q *Queries) LookUpUser(ctx context.Context, email string) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, lookUpUser, email)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) LookUpUserPass(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, lookUpUserPass, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.Pass,
+	)
+	return i, err
 }
 
 const resetUsers = `-- name: ResetUsers :exec

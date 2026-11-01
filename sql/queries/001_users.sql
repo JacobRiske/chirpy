@@ -1,15 +1,16 @@
 -- name: CreateUser :one
-Insert into users (id, created_at, updated_at, email)
+Insert into users (id, created_at, updated_at, email, pass)
 Values(
     gen_random_uuid(),
     NOW(),
     NOW(),
-    $1
+    $1,
+    $2
 )
 Returning *;
 
 -- name: ResetUsers :exec
 TRUNCATE TABLE chirps, users RESTART IDENTITY CASCADE;
 
--- name: LookUpUser :one
-Select id From users Where email = $1;
+-- name: LookUpUserPass :one
+Select * From users Where email = $1;

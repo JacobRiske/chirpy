@@ -15,6 +15,8 @@ fi
 
 psql "$DB_URL" -v ON_ERROR_STOP=1 -c "DROP TABLE IF EXISTS chirps;"
 psql "$DB_URL" -v ON_ERROR_STOP=1 -c "DROP TABLE IF EXISTS users;"
+psql "$DB_URL" -v ON_ERROR_STOP=1 -c "DROP TABLE IF EXISTS refresh_tokens;"
 psql "$DB_URL" -v ON_ERROR_STOP=1 -f sql/schema/001_users.sql
 psql "$DB_URL" -v ON_ERROR_STOP=1 -f sql/schema/002_chirps.sql
+psql "$DB_URL" -v ON_ERROR_STOP=1 -f sql/schema/003_token.sql
 psql "$DB_URL" -c "\\dt"
