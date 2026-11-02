@@ -23,6 +23,7 @@ type apiConfg struct {
 	fileSeverHits atomic.Int32
 	db            *database.Queries
 	env           string
+	sT            string
 }
 
 func (cfg *apiConfg) hitcountString(w http.ResponseWriter, r *http.Request) {
@@ -83,23 +84,34 @@ func postApi(s string) string {
 	return fmt.Sprintf("POST /api/%s", s)
 }
 
+// PUT /api/?
+func putApi(s string) string {
+	return fmt.Sprintf("PUT /api/%s", s)
+}
+
 // GET /api/?
 func getApi(s string) string {
 	return fmt.Sprintf("GET /api/%s", s)
 }
 
-func makeDB() (*database.Queries, string, error) {
+// DELETE /api/?
+func deleteApi(s string) string {
+	return fmt.Sprintf("DELETE /api/%s", s)
+}
+
+func makeDB() (*database.Queries, string, string, error) {
 
 	godotenv.Load(".env")
 	dbURL := os.Getenv("DB_URL")
 	activeEVN := os.Getenv("PLATFORM")
+	st := os.Getenv("TOM_MCD")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
-	return database.New(db), activeEVN, nil
+	return database.New(db), activeEVN, st, nil
 }
 
 func (cfg *apiConfg) restDatabases(ctx context.Context) error {

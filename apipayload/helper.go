@@ -11,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var expiration = 3600 * time.Second
+
 type Chirp struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`

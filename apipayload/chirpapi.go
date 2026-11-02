@@ -5,18 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"time"
 
+	"github.com/JacobRiske/chirpy/internal/auth"
 	"github.com/JacobRiske/chirpy/internal/database"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
-func CreateChirp(w http.ResponseWriter, r *http.Request, db *database.Queries) {
+func CreateChirp(w http.ResponseWriter, r *http.Request, db *database.Queries, sToken string) {
 	var (
-		chirped    database.Chirp
-		cleanChirp string
-		err        error
+		chirped           database.Chirp
+		cleanChirp, token string
+		err               error
 	)
 
 	if db == nil {
@@ -25,8 +25,7 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, db *database.Queries) {
 	}
 
 	type parameters struct {
-		Body   string `json:"body"`
-		UserID string `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -36,9 +35,14 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, db *database.Queries) {
 		return
 	}
 
-	userID, err := uuid.Parse(params.UserID)
+	if token, err = auth.GetBearToken(r.Header); err != nil {
+		respondWithError(w, http.StatusUnauthorized, errors.Wrap(err, "invalid user infromation"))
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, sToken)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, errors.Wrap(err, "invalid user_id"))
+		respondWithError(w, http.StatusUnauthorized, errors.Wrap(err, "invalid user_id"))
 		return
 	}
 
@@ -64,49 +68,6 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, db *database.Queries) {
 		UpdatedAt: chirped.UpdatedAt,
 		UserID:    chirped.UserID,
 	})
-}
-
-func AddUser(w http.ResponseWriter, r *http.Request, db *database.Queries) {
-	var (
-		err        error
-		addNewUser database.User
-	)
-
-	if db == nil {
-		respondWithError(w, http.StatusInternalServerError, errors.New("Database is not configured"))
-		return
-	}
-
-	type parameters struct {
-		Email string `json:"email"`
-	}
-
-	type returnVals struct {
-		ID     uuid.UUID `json:"id"`
-		Create time.Time `json:"created_at"`
-		Update time.Time `json:"updated_at"`
-		Email  string    `json:"email"`
-	}
-
-	data := json.NewDecoder(r.Body)
-	params := parameters{}
-	if err = data.Decode(&params); err != nil {
-		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Couldn't decode parameters"))
-		return
-	}
-
-	if addNewUser, err = db.CreateUser(context.Background(), params.Email); err != nil {
-		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to add the new user"))
-		return
-	}
-
-	respondWithJSON(w, http.StatusCreated, returnVals{
-		ID:     addNewUser.ID,
-		Create: addNewUser.CreatedAt,
-		Update: addNewUser.UpdatedAt,
-		Email:  addNewUser.Email,
-	})
-
 }
 
 func ReturnAllUserChirps(w http.ResponseWriter, r *http.Request, db *database.Queries) {
@@ -203,4 +164,62 @@ func GetUserRequestedChirp(w http.ResponseWriter, r *http.Request, db *database.
 		UserID:    chirpData.UserID,
 	})
 
+}
+
+func RemoveChirp(w http.ResponseWriter, r *http.Request, db *database.Queries, stoken string) {
+
+	chirpID := r.PathValue("chirpID")
+
+	if chirpID == "" {
+		respondWithError(w, http.StatusBadRequest, errors.New("missing chirp id"))
+		return
+	}
+
+	id, err := uuid.Parse(chirpID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, errors.Wrap(err, "invalid chirp id"))
+		return
+	}
+
+	token, err := auth.GetBearToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, errors.Wrap(err, "Un-authorized token"))
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, stoken)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, errors.Wrap(err, "Un-authorized user"))
+		return
+	}
+
+	chirpData, err := db.GetOneChirp(context.Background(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, errors.Wrap(err, "missing chirp"))
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "failed to get chirp data"))
+		return
+	}
+
+	if chirpData.UserID != userID {
+		respondWithError(w, http.StatusForbidden, errors.New("Un-authorized user request"))
+		return
+	}
+
+	_, err = db.RemoveChirp(context.Background(), database.RemoveChirpParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, errors.Wrap(err, "missing chirp"))
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "failed to remove chirp"))
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
 }
