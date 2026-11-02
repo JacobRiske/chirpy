@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	_chirps      = "chirps"
-	_getonething = "%s/%s"
+	_chirps    = "chirps"
+	_extendAPI = "%s/%s"
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 	mux.HandleFunc(getApi(_chirps), func(w http.ResponseWriter, r *http.Request) {
 		apipayload.GetAllChirps(w, r, apiCfg.db)
 	})
-	mux.HandleFunc(getApi(fmt.Sprintf(_getonething, _chirps, "{chirpID}")), func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(getApi(fmt.Sprintf(_extendAPI, _chirps, "{chirpID}")), func(w http.ResponseWriter, r *http.Request) {
 		apipayload.GetUserRequestedChirp(w, r, apiCfg.db)
 	})
 	mux.HandleFunc(postApi("login"), func(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +50,12 @@ func main() {
 	})
 	mux.HandleFunc(postApi("revoke"), func(w http.ResponseWriter, r *http.Request) {
 		apipayload.RevokeToken(w, r, apiCfg.db)
+	})
+	mux.HandleFunc(putApi("users"), func(w http.ResponseWriter, r *http.Request) {
+		apipayload.UpdateUserData(w, r, apiCfg.db, apiCfg.sT)
+	})
+	mux.HandleFunc(deleteApi(fmt.Sprintf(_extendAPI, _chirps, "{chirpID}")), func(w http.ResponseWriter, r *http.Request) {
+		apipayload.RemoveChirp(w, r, apiCfg.db, apiCfg.sT)
 	})
 
 	srv := &http.Server{

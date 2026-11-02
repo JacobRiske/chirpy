@@ -84,9 +84,19 @@ func postApi(s string) string {
 	return fmt.Sprintf("POST /api/%s", s)
 }
 
+// PUT /api/?
+func putApi(s string) string {
+	return fmt.Sprintf("PUT /api/%s", s)
+}
+
 // GET /api/?
 func getApi(s string) string {
 	return fmt.Sprintf("GET /api/%s", s)
+}
+
+// DELETE /api/?
+func deleteApi(s string) string {
+	return fmt.Sprintf("DELETE /api/%s", s)
 }
 
 func makeDB() (*database.Queries, string, string, error) {

@@ -7,6 +7,8 @@ package database
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -63,4 +65,32 @@ TRUNCATE TABLE chirps, users RESTART IDENTITY CASCADE
 func (q *Queries) ResetUsers(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, resetUsers)
 	return err
+}
+
+const updateUserData = `-- name: UpdateUserData :one
+UPDATE users
+SET email = $1,
+    pass = $2,
+    updated_at = NOW()
+WHERE id = $3
+Returning id, created_at, updated_at, email, pass
+`
+
+type UpdateUserDataParams struct {
+	Email string
+	Pass  string
+	ID    uuid.UUID
+}
+
+func (q *Queries) UpdateUserData(ctx context.Context, arg UpdateUserDataParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserData, arg.Email, arg.Pass, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.Pass,
+	)
+	return i, err
 }

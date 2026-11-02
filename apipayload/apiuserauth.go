@@ -217,3 +217,56 @@ func RevokeToken(w http.ResponseWriter, r *http.Request, db *database.Queries) {
 
 	respondWithJSON(w, http.StatusNoContent, nil)
 }
+
+func UpdateUserData(w http.ResponseWriter, r *http.Request, db *database.Queries, stoken string) {
+
+	type parameters struct {
+		Email string `json:"email"`
+		Pass  string `json:"password"`
+	}
+
+	type returnData struct {
+		Email string `json:"email"`
+	}
+
+	userToken, err := auth.GetBearToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, errors.Wrap(err, "un-authorized user"))
+		return
+	}
+
+	data := json.NewDecoder(r.Body)
+	params := parameters{}
+	if err = data.Decode(&params); err != nil {
+		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Couldn't decode parameters"))
+		return
+	}
+
+	userID, err := auth.ValidateJWT(userToken, stoken)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, errors.Wrap(err, "un-authorized user"))
+		return
+	}
+
+	hashedPass, err := auth.HashPass(params.Pass)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to hash password"))
+		return
+	}
+
+	updatedData, err := db.UpdateUserData(context.Background(),
+		database.UpdateUserDataParams{
+			Email: params.Email,
+			Pass:  hashedPass,
+			ID:    userID,
+		})
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to update user data"))
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, returnData{
+		Email: updatedData.Email,
+	})
+}

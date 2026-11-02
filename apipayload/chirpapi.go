@@ -165,3 +165,61 @@ func GetUserRequestedChirp(w http.ResponseWriter, r *http.Request, db *database.
 	})
 
 }
+
+func RemoveChirp(w http.ResponseWriter, r *http.Request, db *database.Queries, stoken string) {
+
+	chirpID := r.PathValue("chirpID")
+
+	if chirpID == "" {
+		respondWithError(w, http.StatusBadRequest, errors.New("missing chirp id"))
+		return
+	}
+
+	id, err := uuid.Parse(chirpID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, errors.Wrap(err, "invalid chirp id"))
+		return
+	}
+
+	token, err := auth.GetBearToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, errors.Wrap(err, "Un-authorized token"))
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, stoken)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, errors.Wrap(err, "Un-authorized user"))
+		return
+	}
+
+	chirpData, err := db.GetOneChirp(context.Background(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, errors.Wrap(err, "missing chirp"))
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "failed to get chirp data"))
+		return
+	}
+
+	if chirpData.UserID != userID {
+		respondWithError(w, http.StatusForbidden, errors.New("Un-authorized user request"))
+		return
+	}
+
+	_, err = db.RemoveChirp(context.Background(), database.RemoveChirpParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, errors.Wrap(err, "missing chirp"))
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "failed to remove chirp"))
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
+}
