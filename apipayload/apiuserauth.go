@@ -31,10 +31,11 @@ func AddUser(w http.ResponseWriter, r *http.Request, db *database.Queries) {
 	}
 
 	type returnVals struct {
-		ID     uuid.UUID `json:"id"`
-		Create time.Time `json:"created_at"`
-		Update time.Time `json:"updated_at"`
-		Email  string    `json:"email"`
+		ID       uuid.UUID `json:"id"`
+		Create   time.Time `json:"created_at"`
+		Update   time.Time `json:"updated_at"`
+		Email    string    `json:"email"`
+		ChirpRed bool      `json:"is_chirpy_red"`
 	}
 
 	data := json.NewDecoder(r.Body)
@@ -55,10 +56,11 @@ func AddUser(w http.ResponseWriter, r *http.Request, db *database.Queries) {
 	}
 
 	respondWithJSON(w, http.StatusCreated, returnVals{
-		ID:     addNewUser.ID,
-		Create: addNewUser.CreatedAt,
-		Update: addNewUser.UpdatedAt,
-		Email:  addNewUser.Email,
+		ID:       addNewUser.ID,
+		Create:   addNewUser.CreatedAt,
+		Update:   addNewUser.UpdatedAt,
+		Email:    addNewUser.Email,
+		ChirpRed: addNewUser.IsChirpyRed,
 	})
 
 }
@@ -84,6 +86,7 @@ func Login(w http.ResponseWriter, r *http.Request, db *database.Queries, sToken 
 		Email         string    `json:"email"`
 		Token         string    `json:"token"`
 		RefreashToken string    `json:"refresh_token"`
+		UserChirpyRed bool      `json:"is_chirpy_red"`
 	}
 
 	data := json.NewDecoder(r.Body)
@@ -162,6 +165,7 @@ func Login(w http.ResponseWriter, r *http.Request, db *database.Queries, sToken 
 		Email:         userData.Email,
 		Token:         token,
 		RefreashToken: rTok,
+		UserChirpyRed: userData.IsChirpyRed,
 	})
 
 }

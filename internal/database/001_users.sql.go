@@ -12,15 +12,16 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-Insert into users (id, created_at, updated_at, email, pass)
+Insert into users (id, created_at, updated_at, is_chirpy_red, email, pass)
 Values(
     gen_random_uuid(),
     NOW(),
     NOW(),
+    false,
     $1,
     $2
 )
-Returning id, created_at, updated_at, email, pass
+Returning id, created_at, updated_at, is_chirpy_red, email, pass
 `
 
 type CreateUserParams struct {
@@ -35,6 +36,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsChirpyRed,
 		&i.Email,
 		&i.Pass,
 	)
@@ -42,7 +44,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const lookUpUserPass = `-- name: LookUpUserPass :one
-Select id, created_at, updated_at, email, pass From users Where email = $1
+Select id, created_at, updated_at, is_chirpy_red, email, pass From users Where email = $1
 `
 
 func (q *Queries) LookUpUserPass(ctx context.Context, email string) (User, error) {
@@ -52,6 +54,7 @@ func (q *Queries) LookUpUserPass(ctx context.Context, email string) (User, error
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsChirpyRed,
 		&i.Email,
 		&i.Pass,
 	)
@@ -67,13 +70,39 @@ func (q *Queries) ResetUsers(ctx context.Context) error {
 	return err
 }
 
+const updateUserChirpyRed = `-- name: UpdateUserChirpyRed :one
+UPDATE users
+SET is_chirpy_red = $1
+WHERE id = $2
+Returning id, created_at, updated_at, is_chirpy_red, email, pass
+`
+
+type UpdateUserChirpyRedParams struct {
+	IsChirpyRed bool
+	ID          uuid.UUID
+}
+
+func (q *Queries) UpdateUserChirpyRed(ctx context.Context, arg UpdateUserChirpyRedParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserChirpyRed, arg.IsChirpyRed, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsChirpyRed,
+		&i.Email,
+		&i.Pass,
+	)
+	return i, err
+}
+
 const updateUserData = `-- name: UpdateUserData :one
 UPDATE users
 SET email = $1,
     pass = $2,
     updated_at = NOW()
 WHERE id = $3
-Returning id, created_at, updated_at, email, pass
+Returning id, created_at, updated_at, is_chirpy_red, email, pass
 `
 
 type UpdateUserDataParams struct {
@@ -89,6 +118,7 @@ func (q *Queries) UpdateUserData(ctx context.Context, arg UpdateUserDataParams) 
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsChirpyRed,
 		&i.Email,
 		&i.Pass,
 	)
