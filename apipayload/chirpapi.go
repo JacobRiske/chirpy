@@ -70,44 +70,6 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, db *database.Queries, s
 	})
 }
 
-func ReturnAllUserChirps(w http.ResponseWriter, r *http.Request, db *database.Queries) {
-	var (
-		userChirps          []database.Chirp
-		returnAllUserChirps []Chirp
-		id                  uuid.UUID
-		err                 error
-	)
-
-	userID := r.PathValue("userID")
-	if userID == "" {
-		respondWithError(w, http.StatusBadRequest, errors.New("missing user id"))
-		return
-	}
-
-	id, err = uuid.Parse(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, errors.Wrap(err, "invalid user id"))
-		return
-	}
-
-	if userChirps, err = db.GetAllUserChirp(context.Background(), id); err != nil {
-		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to get users chirps"))
-		return
-	}
-
-	for _, chirp := range userChirps {
-		returnAllUserChirps = append(returnAllUserChirps, Chirp{
-			ID:        chirp.ID,
-			CreatedAt: chirp.CreatedAt,
-			UpdatedAt: chirp.UpdatedAt,
-			Body:      chirp.Body,
-			UserID:    chirp.UserID,
-		})
-	}
-
-	respondWithJSON(w, http.StatusOK, userChirps)
-}
-
 func GetAllChirps(w http.ResponseWriter, r *http.Request, db *database.Queries) {
 	var (
 		allChirps       []database.Chirp
@@ -115,9 +77,49 @@ func GetAllChirps(w http.ResponseWriter, r *http.Request, db *database.Queries) 
 		err             error
 	)
 
-	if allChirps, err = db.GetAllChirps(context.Background()); err != nil {
-		respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to get chirps"))
-		return
+	s := r.URL.Query().Get("author_id")
+
+	if s != "" {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, errors.Wrap(err, "invalid user id"))
+			return
+		}
+		switch r.URL.Query().Get("sort") {
+		case "asc":
+			if allChirps, err = db.GetAllUserChirpASC(context.Background(), id); err != nil {
+				respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to get chirps"))
+				return
+			}
+		case "desc":
+			if allChirps, err = db.GetAllUserChirpDESC(context.Background(), id); err != nil {
+				respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to get chirps"))
+				return
+			}
+		default:
+			if allChirps, err = db.GetAllUserChirp(context.Background(), id); err != nil {
+				respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to get chirps"))
+				return
+			}
+		}
+	} else {
+		switch r.URL.Query().Get("sort") {
+		case "asc":
+			if allChirps, err = db.GetAllChirpsASC(context.Background()); err != nil {
+				respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to get chirps"))
+				return
+			}
+		case "desc":
+			if allChirps, err = db.GetAllChirpsDESC(context.Background()); err != nil {
+				respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to get chirps"))
+				return
+			}
+		default:
+			if allChirps, err = db.GetAllChirps(context.Background()); err != nil {
+				respondWithError(w, http.StatusInternalServerError, errors.Wrap(err, "Failed to get chirps"))
+				return
+			}
+		}
 	}
 
 	for _, chirp := range allChirps {
